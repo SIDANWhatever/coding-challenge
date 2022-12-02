@@ -31,7 +31,7 @@ export const ProgressBar = styled("div", {
 export const ProgressBox = styled("div", {
   background:
     "#ffffff linear-gradient(45deg, #f4edff, #efffef) left center/100% 100% no-repeat",
-  width: "400px",
+  width: "800px",
   borderRadius: "10px",
   boxShadow: "0 5px 35px #cdcdcd",
   padding: "25px",

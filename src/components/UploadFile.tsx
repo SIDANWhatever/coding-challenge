@@ -108,6 +108,11 @@ const ProgressTracker = ({ files }: ProgressTrackerProps) => {
     fileObj.percentage = e.percentage;
     fileObj.uploadedChunkSize = e.loaded;
 
+    setFilesMap(() => {
+      const newMap = filesMap.set(file.name, fileObj);
+      return newMap;
+    });
+
     // updateFileElement(fileObj);
   };
 
@@ -117,6 +122,11 @@ const ProgressTracker = ({ files }: ProgressTrackerProps) => {
     fileObj.status = FILE_STATUS.FAILED;
     fileObj.percentage = 100;
 
+    setFilesMap(() => {
+      const newMap = filesMap.set(file.name, fileObj);
+      return newMap;
+    });
+
     // updateFileElement(fileObj);
   };
 
@@ -124,6 +134,11 @@ const ProgressTracker = ({ files }: ProgressTrackerProps) => {
     const fileObj = filesMap.get(file.name);
 
     fileObj.status = FILE_STATUS.PAUSED;
+
+    setFilesMap(() => {
+      const newMap = filesMap.set(file.name, fileObj);
+      return newMap;
+    });
 
     // updateFileElement(fileObj);
   };
@@ -163,6 +178,7 @@ const ProgressTracker = ({ files }: ProgressTrackerProps) => {
         <div key={file.name}>
           <UploadSession
             file={file}
+            // fileStatus={filesMap.get(file.name)}
             retryFileUpload={retryFileUpload}
             abortFileUpload={abortFileUpload}
             resumeFileUpload={resumeFileUpload}
@@ -176,6 +192,7 @@ const ProgressTracker = ({ files }: ProgressTrackerProps) => {
 
 interface UploadSessionProps {
   file: File;
+  // fileStatus: FileStatus;
   retryFileUpload: (file: File) => void;
   abortFileUpload: (file: File) => void;
   resumeFileUpload: (file: File) => void;
@@ -184,12 +201,16 @@ interface UploadSessionProps {
 
 const UploadSession = ({
   file,
+  // fileStatus,
   retryFileUpload,
   abortFileUpload,
   resumeFileUpload,
   clearFileUpload,
 }: UploadSessionProps) => {
   const extIndex = file.name.lastIndexOf(".");
+  const uploadedPercentage: string = fileStatus?.percentage.toString() + "%" || "0%";
+  console.log("Individual file status", fileStatus);
+  
 
   return (
     <FileProgress>
@@ -203,7 +224,7 @@ const UploadSession = ({
             {file.name.substring(extIndex)}
           </FileDetailsSpan>
         </FileDetailsPara>
-        <ProgressBar type="individual" css={{ width: "0px" }}></ProgressBar>
+        <ProgressBar type="individual" css={{ width: uploadedPercentage }}></ProgressBar>
       </FileDetails>
       <FileActions>
         <ActionButton
