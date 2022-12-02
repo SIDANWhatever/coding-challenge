@@ -208,8 +208,8 @@ const UploadSession = ({
   clearFileUpload,
 }: UploadSessionProps) => {
   const extIndex = file.name.lastIndexOf(".");
-  const uploadedPercentage: string = fileStatus?.percentage.toString() + "%" || "0%";
-  console.log("Individual file status", fileStatus);
+  // const uploadedPercentage: string = fileStatus?.percentage.toString() + "%" || "0%";
+  // console.log("Individual file status", fileStatus);
   
 
   return (
@@ -224,7 +224,7 @@ const UploadSession = ({
             {file.name.substring(extIndex)}
           </FileDetailsSpan>
         </FileDetailsPara>
-        <ProgressBar type="individual" css={{ width: uploadedPercentage }}></ProgressBar>
+        <ProgressBar type="individual" css={{ width: "100%" }}></ProgressBar>
       </FileDetails>
       <FileActions>
         <ActionButton
