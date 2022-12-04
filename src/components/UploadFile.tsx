@@ -57,7 +57,7 @@ const UploadFile = () => {
           onChange={handleFileChange}
         />
       </label>
-      <ProgressTracker files={files} />
+      <ProgressTracker files={files}/>
     </div>
   );
 };
@@ -79,6 +79,7 @@ const ProgressTracker = ({ files }: ProgressTrackerProps) => {
   const [successCount, setSuccessCount] = useState<number>(0);
   const [failedCount, setFailedCount] = useState<number>(0);
   const [filesCount, setFilesCount] = useState<number>(0);
+  const [abortCount, setAbortCount] = useState<number>(0);
 
   const refreshPage = (): void => {
     const newFilesCount = files.length;
@@ -91,8 +92,8 @@ const ProgressTracker = ({ files }: ProgressTrackerProps) => {
     let paused: number = 0;
 
     filesMap.forEach((fileContent) => {
-      uploadedAccumulator += fileContent.fileStatus.size;
-      uploadingAccumulator += fileContent.fileStatus.uploadedChunkSize;
+      uploadedAccumulator += fileContent.fileStatus.uploadedChunkSize;
+      uploadingAccumulator += fileContent.fileStatus.size;
       if (fileContent.fileStatus.status === FILE_STATUS.COMPLETED) {
         success += 1;
       } else if (fileContent.fileStatus.status === FILE_STATUS.FAILED) {
@@ -108,6 +109,7 @@ const ProgressTracker = ({ files }: ProgressTrackerProps) => {
 
     setUploadedSize(uploadedAccumulator);
     setTotalSize(uploadingAccumulator);
+
     setPausedCount(paused);
     setSuccessCount(success);
     setFailedCount(failed);
@@ -121,84 +123,83 @@ const ProgressTracker = ({ files }: ProgressTrackerProps) => {
   }
 
   useEffect(() => {
-    files.forEach((file) => {
+    const onComplete = (_: ProgressEvent<EventTarget>, file: File): void => {
+      const fileObj = filesMap.get(file.name);
+      if (fileObj) {
+        fileObj.fileStatus.status = FILE_STATUS.COMPLETED;
+        fileObj.fileStatus.percentage = 100;
+  
+        setFilesMap(() => {
+          const newMap = filesMap.set(file.name, fileObj);
+          return newMap;
+        });
+      }
+      refreshPage();
+      console.log(" request completed ");
+    };
+  
+    const onProgress = (e: CustomProgressEvent, file: File): void => {
+      const fileObj = filesMap.get(file.name);
+      if (fileObj) {
+        fileObj.fileStatus.status = FILE_STATUS.UPLOADING;
+  
+        if (e.percentage) {
+          fileObj.fileStatus.percentage = e.percentage;
+        }
+        fileObj.fileStatus.uploadedChunkSize = e.loaded;
+  
+        setFilesMap(() => {
+          const newMap = filesMap.set(file.name, fileObj);
+          return newMap;
+        });
+      }
+      // updateFileElement(fileObj);
+  
+      console.log(" request progress ", e, fileObj);
+      refreshPage();
+    };
+  
+    const onError = (_: ProgressEvent<EventTarget>, file: File): void => {
+      const fileObj = filesMap.get(file.name);
+  
+      if (fileObj) {
+        fileObj.fileStatus.status = FILE_STATUS.FAILED;
+        fileObj.fileStatus.percentage = 100;
+    
+        setFilesMap(() => {
+          const newMap = filesMap.set(file.name, fileObj);
+          return newMap;
+        });
+      }
+      refreshPage();
+      // updateFileElement(fileObj);
+    };
+  
+    const onAbort = (_: ProgressEvent<EventTarget>, file: File): void => {
+      const fileObj = filesMap.get(file.name);
+      if (fileObj) {
+        fileObj.fileStatus.status = FILE_STATUS.PAUSED;
+    
+        setFilesMap(() => {
+          const newMap = filesMap.set(file.name, fileObj);
+          return newMap;
+        });
+      }
+      refreshPage();
+      // updateFileElement(fileObj);
+    };
+  
+    const handleUpload = uploadFiles(files, {
+      url: ENDPOINTS.UPLOAD,
+      startingByte: 0,
+      fileId: "",
+      onComplete: onComplete,
+      onError: onError,
+      onProgress: onProgress,
+      onAbort: onAbort,
+    });
 
-      const onComplete = (_: ProgressEvent<EventTarget>, file: File): void => {
-        const fileObj = filesMap.get(file.name);
-        if (fileObj) {
-          fileObj.fileStatus.status = FILE_STATUS.COMPLETED;
-          fileObj.fileStatus.percentage = 100;
-    
-          setFilesMap(() => {
-            const newMap = filesMap.set(file.name, fileObj);
-            return newMap;
-          });
-        }
-        refreshPage();
-        console.log(" request completed ");
-      };
-    
-      const onProgress = (e: CustomProgressEvent, file: File): void => {
-        const fileObj = filesMap.get(file.name);
-        if (fileObj) {
-          fileObj.fileStatus.status = FILE_STATUS.UPLOADING;
-    
-          if (e.percentage) {
-            fileObj.fileStatus.percentage = e.percentage;
-          }
-          fileObj.fileStatus.uploadedChunkSize = e.loaded;
-    
-          setFilesMap(() => {
-            const newMap = filesMap.set(file.name, fileObj);
-            return newMap;
-          });
-        }
-        // updateFileElement(fileObj);
-    
-        console.log(" request progress ", e, fileObj);
-        refreshPage();
-      };
-    
-      const onError = (_: ProgressEvent<EventTarget>, file: File): void => {
-        const fileObj = filesMap.get(file.name);
-    
-        if (fileObj) {
-          fileObj.fileStatus.status = FILE_STATUS.FAILED;
-          fileObj.fileStatus.percentage = 100;
-      
-          setFilesMap(() => {
-            const newMap = filesMap.set(file.name, fileObj);
-            return newMap;
-          });
-        }
-        refreshPage();
-        // updateFileElement(fileObj);
-      };
-    
-      const onAbort = (_: ProgressEvent<EventTarget>, file: File): void => {
-        const fileObj = filesMap.get(file.name);
-        if (fileObj) {
-          fileObj.fileStatus.status = FILE_STATUS.PAUSED;
-      
-          setFilesMap(() => {
-            const newMap = filesMap.set(file.name, fileObj);
-            return newMap;
-          });
-        }
-        refreshPage();
-        // updateFileElement(fileObj);
-      };
-    
-      const handleUpload = uploadFiles(files, {
-        url: ENDPOINTS.UPLOAD,
-        startingByte: 0,
-        fileId: "",
-        onComplete: onComplete,
-        onError: onError,
-        onProgress: onProgress,
-        onAbort: onAbort,
-      });
-      
+    files.forEach((file) => {
       const retryFileUpload = handleUpload.retryFileUpload;
       const abortFileUpload = handleUpload.abortFileUpload;
       const resumeFileUpload = handleUpload.resumeFileUpload;
@@ -211,7 +212,8 @@ const ProgressTracker = ({ files }: ProgressTrackerProps) => {
           setFilesMap(newMap);
         }
         refreshPage();
-        
+        setAbortCount((prev) => prev + 1);
+
         if (cleared) {
           return true
         }
@@ -239,7 +241,7 @@ const ProgressTracker = ({ files }: ProgressTrackerProps) => {
 
   return (
     <ProgressBox>
-      <UploadHeader>Uploading {`${pendingCount + uploadingCount}/${filesCount}`} Files</UploadHeader>
+      <UploadHeader>Uploading {`${pendingCount + uploadingCount}/${filesCount - abortCount}`} Files</UploadHeader>
       <UploadProgressPara>
         <UploadProgressSpan>{uploadedSize/totalSize || 0}%</UploadProgressSpan>
         <UploadProgressSpan>{successCount}</UploadProgressSpan>
