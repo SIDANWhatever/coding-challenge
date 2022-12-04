@@ -13,7 +13,6 @@ export default function Home() {
       </Head>
 
       <main className={styles.main}>
-        <h1 className={styles.title}>Upload Button Example</h1>
         <UploadFile />
       </main>
 

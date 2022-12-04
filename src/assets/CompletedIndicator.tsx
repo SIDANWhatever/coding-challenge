@@ -6,8 +6,8 @@ export const CompletedIndicator = () => {
       id="Component_3_1"
       data-name="Component 3 – 1"
       xmlns="http://www.w3.org/2000/svg"
-      width="45"
-      height="45"
+      width="100%"
+      height="100%"
       viewBox="0 0 45 45">
       <path
         id="Path_11"

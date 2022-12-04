@@ -1,3 +1,4 @@
+import { Clear, Collapse, Completed, CompletedIndicator, Expand, Failed, FailedIndicator, Paused, PausedIndicator, Resume, Retry } from "@src/assets";
 import { useState, useEffect } from "react";
 import { FileStatus, ProgressTrackerProps, UploadSessionProps, CustomProgressEvent, FilesMapContent } from "./type";
 import {
@@ -14,6 +15,10 @@ import {
   FileProgress,
   FileActions,
   ActionButton,
+  SVGBox,
+  ActionSpan,
+  UploadLabel,
+  FlexBox,
 } from "./UIComponents";
 import { ENDPOINTS, uploadFiles } from "./uploader";
 
@@ -47,18 +52,18 @@ const UploadFile = () => {
   }, [files]);
 
   return (
-    <div>
-      <label id="upload-btn">
-        upload
+    <FlexBox css={{flexDirection: "column"}}>
+      <UploadLabel id="upload-btn">
+        Upload
         <Input
           type="file"
           multiple
           accept="video/*"
           onChange={handleFileChange}
         />
-      </label>
+      </UploadLabel>
       <ProgressTracker files={files}/>
-    </div>
+    </FlexBox>
   );
 };
 
@@ -239,25 +244,44 @@ const ProgressTracker = ({ files }: ProgressTrackerProps) => {
     console.log("FileMaps: ", filesMap);
   }, [files]);
 
+  const ProgressHeader = () => {
+    return (
+      <>
+        <UploadHeader>Uploading {`${pendingCount + uploadingCount}/${filesCount - abortCount}`} Files</UploadHeader>
+        <UploadProgressPara>
+          <UploadProgressSpan>{Math.floor(uploadedSize/totalSize) || 0}%</UploadProgressSpan>
+          <UploadProgressSpan>
+            <SVGBox type="indicator"><CompletedIndicator /></SVGBox>
+            {successCount}
+          </UploadProgressSpan>
+          <UploadProgressSpan>
+            <SVGBox type="indicator"><FailedIndicator /></SVGBox>
+            {failedCount}
+          </UploadProgressSpan>
+          <UploadProgressSpan>
+            <SVGBox type="indicator"><PausedIndicator /></SVGBox>
+            {pausedCount}
+          </UploadProgressSpan>
+        </UploadProgressPara>
+        <MaximizeButton
+          onClick={() =>
+            setMaxButtonFocused((prev: boolean): boolean => {
+              return !prev;
+            })
+          }>
+          <SVGBox>
+            {maxButtonFocused ? <Collapse /> : <Expand />}
+          </SVGBox>
+        </MaximizeButton>
+        <ProgressBar type="total" css={{width: `${uploadedSize/totalSize}%` }}></ProgressBar>
+      </>
+    )
+  }
+
   return (
     <ProgressBox>
-      <UploadHeader>Uploading {`${pendingCount + uploadingCount}/${filesCount - abortCount}`} Files</UploadHeader>
-      <UploadProgressPara>
-        <UploadProgressSpan>{uploadedSize/totalSize || 0}%</UploadProgressSpan>
-        <UploadProgressSpan>{successCount}</UploadProgressSpan>
-        <UploadProgressSpan>{failedCount}</UploadProgressSpan>
-        <UploadProgressSpan>{pausedCount}</UploadProgressSpan>
-      </UploadProgressPara>
-      <MaximizeButton
-        type="button"
-        onClick={() =>
-          setMaxButtonFocused((prev: boolean): boolean => {
-            return !prev;
-          })
-        }>
-        Maximized
-      </MaximizeButton>
-      {[...filesMap.values()].map((file) => (
+      {filesCount - abortCount > 0 ? <ProgressHeader /> : "No Upload In Progress"}
+      {maxButtonFocused && [...filesMap.values()].map((file) => (
         <div key={file.file.name}>          
           <UploadSession
             fileContent={file}
@@ -268,56 +292,90 @@ const ProgressTracker = ({ files }: ProgressTrackerProps) => {
   );
 };
 
-
-
 const UploadSession = ({
   fileContent
 }: UploadSessionProps) => {
   const extIndex = fileContent.file.name.lastIndexOf(".");
   const uploadedPercentage: string = fileContent.fileStatus.percentage.toString() + "%" || "0%";
 
-  return (
-    <FileProgress>
-      <FileDetails>
-        <FileDetailsPara>
-          <FileDetailsSpan type="status">pending</FileDetailsSpan>
-          <FileDetailsSpan type="fileName">
-            {fileContent.file.name.substring(0, extIndex)}
-          </FileDetailsSpan>
-          <FileDetailsSpan type="fileExt">
-            {fileContent.file.name.substring(extIndex)}
-          </FileDetailsSpan>
-        </FileDetailsPara>
-        <div>{fileContent.fileStatus.size}</div>
-        <div>{fileContent.fileStatus.percentage}</div>
-        <div>{fileContent.fileStatus.status}</div>
-        <div>{fileContent.fileStatus.uploadedChunkSize}</div>
-        <ProgressBar type="individual" css={{ width: uploadedPercentage }}></ProgressBar>
-      </FileDetails>
-      <FileActions>
-        <ActionButton
-          onClick={() => {
-            fileContent.uploader.retryFileUpload(fileContent.file);
-          }}>
-          Retry
-        </ActionButton>
+  const ShowButton = () => {
+    if (fileContent.fileStatus.status === FILE_STATUS.UPLOADING || fileContent.fileStatus.status === FILE_STATUS.PENDING) {
+      return (
         <ActionButton
           onClick={() => {
             fileContent.uploader.abortFileUpload(fileContent.file);
           }}>
-          Pause
+          <SVGBox type="action">
+            <Paused />
+          </SVGBox>
+          <ActionSpan>
+            Pause
+          </ActionSpan>
         </ActionButton>
+      )
+    } else if (fileContent.fileStatus.status === FILE_STATUS.PAUSED) {
+      return (
         <ActionButton
           onClick={() => {
             fileContent.uploader.resumeFileUpload(fileContent.file);
           }}>
-          Resume
+          <SVGBox type="action">
+            <Resume />
+          </SVGBox>
+          <ActionSpan>
+            Resume
+          </ActionSpan>
         </ActionButton>
+      )
+    } else if (fileContent.fileStatus.status === FILE_STATUS.FAILED) {
+      return (
+        <ActionButton
+          onClick={() => {
+            fileContent.uploader.retryFileUpload(fileContent.file);
+          }}>
+          <SVGBox type="action">
+            <Retry />
+          </SVGBox>
+          <ActionSpan>
+            Retry
+          </ActionSpan>
+        </ActionButton>
+      )
+    } 
+    return
+  }
+
+  return (
+    <FileProgress>
+      <FileDetails>
+        <FileDetailsPara>
+          {fileContent.fileStatus.status === FILE_STATUS.PENDING && <FileDetailsSpan type="status">Pending</FileDetailsSpan>}
+          {fileContent.fileStatus.status === FILE_STATUS.COMPLETED && <SVGBox type="ended"><Completed /></SVGBox>}
+          {fileContent.fileStatus.status === FILE_STATUS.FAILED && <SVGBox type="ended"><Failed /></SVGBox>}
+          <FileDetailsSpan type="fileName">
+            {fileContent.file.name.substring(0, extIndex)}
+          </FileDetailsSpan>
+          <FileDetailsSpan type="fileName">
+            {fileContent.file.name.substring(extIndex)}
+          </FileDetailsSpan>
+          <FileDetailsSpan type="fileName">
+            {Math.floor(fileContent.fileStatus.percentage)}%
+          </FileDetailsSpan>
+        </FileDetailsPara>
+        <ProgressBar type="individual" css={{ width: uploadedPercentage }}></ProgressBar>
+      </FileDetails>
+      <FileActions>
+        {ShowButton()}
         <ActionButton
           onClick={() => {
             fileContent.uploader.clearFileUpload(fileContent.file);
           }}>
-          Clear
+          <SVGBox type="action">
+            <Clear />
+          </SVGBox>
+          <ActionSpan>
+            Clear
+          </ActionSpan>
         </ActionButton>
       </FileActions>
     </FileProgress>

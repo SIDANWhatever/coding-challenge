@@ -6,8 +6,8 @@ export const Retry = () => {
       id="Component_9_1"
       data-name="Component 9 – 1"
       xmlns="http://www.w3.org/2000/svg"
-      width="45"
-      height="42.481"
+      width="100%"
+      height="100%"
       viewBox="0 0 45 42.481">
       <path
         id="Path_14"

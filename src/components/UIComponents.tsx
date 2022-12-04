@@ -1,21 +1,48 @@
 import { styled } from "@src/stitches.config";
 
+const flexCenter = {
+  display: "flex",
+  justifyContent: "center",
+  alignItems: "center",
+}
+
+export const FlexBox = styled("div", {
+  ...flexCenter,
+})
+
 // UI Elements
 export const Input = styled("input", {
   display: "none",
 });
 
-export const ProgressBar = styled("div", {
-  position: "absolute",
-  left: "0",
-  top: "85px",
-  height: "2px",
+export const UploadLabel = styled("label", {
+  ...flexCenter,
+  width: "140px",
+  height: "60px",
   background: "#607D8B",
-  opacity: "1",
-  transition: "width 0.3s ease, opacity 0.3s ease",
+  borderRadius: "20px",
+  color: "#fff",
+  fontSize: "25px",
+  fontWeight: "bold",
+  cursor: "pointer",
+  transition: "all 0.3s ease-in-out",
+  "&:hover": {
+    background: "#455A64",
+  },
+});
 
+export const ProgressBar = styled("div", {
   variants: {
     type: {
+      total : {
+        position: "absolute",
+        left: "0",
+        top: "85px",
+        height: "2px",
+        background: "#607D8B",
+        opacity: "1",
+        transition: "width 0.3s ease, opacity 0.3s ease",
+      },
       individual: {
         height: "2px",
         background: "#607D8B",
@@ -31,7 +58,7 @@ export const ProgressBar = styled("div", {
 export const ProgressBox = styled("div", {
   background:
     "#ffffff linear-gradient(45deg, #f4edff, #efffef) left center/100% 100% no-repeat",
-  width: "800px",
+  width: "400px",
   borderRadius: "10px",
   boxShadow: "0 5px 35px #cdcdcd",
   padding: "25px",
@@ -48,30 +75,37 @@ export const UploadHeader = styled("h3", {
   color: "#222",
 });
 
-export const UploadProgressPara = styled("p", {
+export const UploadProgressPara = styled("div", {
+  ...flexCenter,
+  width: "200px",
   margin: "10px 0 0",
   fontSize: "0.8em",
   color: "#617e8c",
 });
 
+
+
 export const UploadProgressSpan = styled("span", {
-  width: "30px",
+  width: "50px",
   paddingRight: "15px",
+  display: "flex",
 });
 
-export const MaximizeButton = styled("button", {
+
+
+export const MaximizeButton = styled("div", {
   position: "absolute",
   right: "25px",
   top: "35px",
   width: "20px",
   height: "20px",
   overflow: "hidden",
-  textIndent: "9999999px",
   opacity: "0.8",
   transition: "opacity 0.3s ease",
 
   "&:hover": {
     opacity: "1",
+    cursor: "pointer",
   },
 });
 
@@ -79,6 +113,7 @@ export const FileProgress = styled("div", {
   display: "flex",
   alignItems: "center",
   width: "100%",
+  height: "75px",
 });
 
 export const FileDetails = styled("div", {
@@ -99,14 +134,15 @@ export const FileDetails = styled("div", {
   },
 });
 
-export const FileDetailsPara = styled("p", {
+export const FileDetailsPara = styled("div", {
   paddingRight: "30px",
   position: "relative",
-  alignItems: "center",
   fontSize: "0.8em",
   height: "25px",
   color: "#565656",
   margin: "10px 0",
+  display: "flex",
+  alignItems: "center",
 });
 
 export const FileDetailsSpan = styled("span", {
@@ -120,41 +156,14 @@ export const FileDetailsSpan = styled("span", {
         marginTop: "4px",
         display: "inline-block",
         flex: "1",
-        /* 40px off because file status takes max 35px wide plus 5 of gap */
         maxWidth: "calc(100% - 40px)",
-      },
-      fileExt: {
-        marginTop: "4px",
       },
       status: {
         overflow: "hidden",
-        textIndent: "-9999999px",
         height: "20px",
-        width: "20px",
+        width: "60px",
         marginRight: "10px",
         float: "left",
-        "&.uploading": {
-          overflow: "hidden",
-          textIndent: "-9999999px",
-          height: "20px",
-          width: "20px",
-          marginRight: "10px",
-          float: "left",
-        },
-        "&.failed": {
-          background:
-            'url("@src/assets/failed.svg") center center/100% 100% no-repeat',
-        },
-        "&.completed": {
-          background:
-            'url("@src/assets/completed.svg") center center/100% 100% no-repeat',
-        },
-        "&.paused": {
-          background:
-            'url("@src/assets/paused-indicator.svg") center center/100% 100% no-repeat',
-          right: "auto",
-          left: "0",
-        },
       },
     },
   },
@@ -162,41 +171,46 @@ export const FileDetailsSpan = styled("span", {
 
 export const FileActions = styled("div", {
   minWidth: "45px",
+  height: "60px",
   display: "flex",
-  justifyContent: "center",
 });
 
 export const ActionButton = styled("button", {
-  height: "50px",
   textAlign: "center",
-  padding: "36px 0 0",
   fontSize: "0.7em",
   color: "#607D8B",
-  width: "40px",
+  width: "50px",
   minWidth: "40px",
-  marginLeft: "5px",
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  justifyContent: "flex-end",
+});
 
-  "&.clear-btn": {
-    background: 'url("@src/assets/clear.svg") center 42%/20px 20px no-repeat',
-  },
-
-  "&.retry-btn": {
-    background: 'url("@src/assets/retry.svg") center 42%/20px 20px no-repeat',
-  },
-
-  "&.pause-btn": {
-    background: 'url("@src/assets/pause.svg") center 42%/20px 20px no-repeat',
-  },
-
-  "&.resume-btn": {
-    background: 'url("@src/assets/resume.svg") center 42%/20px 20px no-repeat',
-  },
+export const ActionSpan = styled("span", {
+  ...flexCenter,
+  marginTop: "5px"
 });
 
 export const SVGBox = styled("div", {
-  position: "absolute",
-  top: "0",
-  left: "0",
+  ...flexCenter,
   width: "100%",
   height: "100%",
+
+  variants: {
+    type: {
+      action: {
+        width: "25px",
+        height: "25px",
+      },
+      indicator: {
+        marginRight: "5px",
+      },
+      ended: {
+        width: "20px",
+        height: "20px",
+        marginRight: "8px",
+      }
+    },
+  },
 });
