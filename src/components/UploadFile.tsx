@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { FileStatus, ProgressTrackerProps, UploadSessionProps, CustomProgressEvent, FilesMapContent } from "./type";
 import {
   Input,
   ProgressBar,
@@ -7,7 +8,6 @@ import {
   UploadProgressPara,
   UploadProgressSpan,
   MaximizeButton,
-  SVGBox,
   FileDetails,
   FileDetailsPara,
   FileDetailsSpan,
@@ -15,7 +15,7 @@ import {
   FileActions,
   ActionButton,
 } from "./UIComponents";
-import { CustomProgressEvent, ENDPOINTS, uploadFiles } from "./uploader";
+import { ENDPOINTS, uploadFiles } from "./uploader";
 
 const FILE_STATUS = {
   PENDING: "pending",
@@ -24,6 +24,13 @@ const FILE_STATUS = {
   COMPLETED: "completed",
   FAILED: "failed",
 };
+
+const defaultFileStatus = {
+  size: 1000000,
+  status: FILE_STATUS.PENDING,
+  percentage: 0,
+  uploadedChunkSize: 0,
+}
 
 const UploadFile = () => {
   const [files, setFiles] = useState<File[]>([]);
@@ -57,124 +64,184 @@ const UploadFile = () => {
 
 export default UploadFile;
 
-interface ProgressTrackerProps {
-  files: File[];
-}
 
-interface FileStatus {
-  size: number;
-  status: string;
-  percentage: number;
-  uploadedChunkSize: number;
-}
-
-const defaultFileStatus = {
-  size: 1000000,
-  status: FILE_STATUS.PENDING,
-  percentage: 0,
-  uploadedChunkSize: 0,
-}
 
 const ProgressTracker = ({ files }: ProgressTrackerProps) => {
-  const [filesMap, setFilesMap] = useState<Map<string, FileStatus>>(new Map());
+  const [filesMap, setFilesMap] = useState<Map<string, FilesMapContent>>(new Map());
+  const [maxButtonFocused, setMaxButtonFocused] = useState<boolean>(false);
+
+  const [uploadedSize, setUploadedSize] = useState<number>(0);
+  const [totalSize, setTotalSize] = useState<number>(0);
+
+  const [pendingCount, setPendingCount] = useState<number>(0);
+  const [uploadingCount, setUploadingCount] = useState<number>(0);
+  const [pausedCount, setPausedCount] = useState<number>(0);
+  const [successCount, setSuccessCount] = useState<number>(0);
+  const [failedCount, setFailedCount] = useState<number>(0);
+  const [filesCount, setFilesCount] = useState<number>(0);
+
+  const refreshPage = (): void => {
+    const newFilesCount = files.length;
+    let uploadedAccumulator: number = 0;
+    let uploadingAccumulator: number = 0;
+    let pending: number = 0;
+    let uploading: number = 0;
+    let success: number = 0;
+    let failed: number = 0;
+    let paused: number = 0;
+
+    filesMap.forEach((fileContent) => {
+      uploadedAccumulator += fileContent.fileStatus.size;
+      uploadingAccumulator += fileContent.fileStatus.uploadedChunkSize;
+      if (fileContent.fileStatus.status === FILE_STATUS.COMPLETED) {
+        success += 1;
+      } else if (fileContent.fileStatus.status === FILE_STATUS.FAILED) {
+        failed += 1;
+      } else if (fileContent.fileStatus.status === FILE_STATUS.PAUSED) {
+        paused += 1;
+      } else if (fileContent.fileStatus.status === FILE_STATUS.UPLOADING) {
+        uploading += 1;
+      } else if (fileContent.fileStatus.status === FILE_STATUS.PENDING) {
+        pending += 1;
+      }
+    })
+
+    setUploadedSize(uploadedAccumulator);
+    setTotalSize(uploadingAccumulator);
+    setPausedCount(paused);
+    setSuccessCount(success);
+    setFailedCount(failed);
+    setUploadingCount(uploading);
+    setPendingCount(pending);
+    setFilesCount(newFilesCount);
+
+    console.log("uploaded", uploadedAccumulator);
+    console.log("uploading", uploadingAccumulator);
+  
+  }
 
   useEffect(() => {
     files.forEach((file) => {
+
+      const onComplete = (_: ProgressEvent<EventTarget>, file: File): void => {
+        const fileObj = filesMap.get(file.name);
+        if (fileObj) {
+          fileObj.fileStatus.status = FILE_STATUS.COMPLETED;
+          fileObj.fileStatus.percentage = 100;
+    
+          setFilesMap(() => {
+            const newMap = filesMap.set(file.name, fileObj);
+            return newMap;
+          });
+        }
+        refreshPage();
+        console.log(" request completed ");
+      };
+    
+      const onProgress = (e: CustomProgressEvent, file: File): void => {
+        const fileObj = filesMap.get(file.name);
+        if (fileObj) {
+          fileObj.fileStatus.status = FILE_STATUS.UPLOADING;
+    
+          if (e.percentage) {
+            fileObj.fileStatus.percentage = e.percentage;
+          }
+          fileObj.fileStatus.uploadedChunkSize = e.loaded;
+    
+          setFilesMap(() => {
+            const newMap = filesMap.set(file.name, fileObj);
+            return newMap;
+          });
+        }
+        // updateFileElement(fileObj);
+    
+        console.log(" request progress ", e, fileObj);
+        refreshPage();
+      };
+    
+      const onError = (_: ProgressEvent<EventTarget>, file: File): void => {
+        const fileObj = filesMap.get(file.name);
+    
+        if (fileObj) {
+          fileObj.fileStatus.status = FILE_STATUS.FAILED;
+          fileObj.fileStatus.percentage = 100;
+      
+          setFilesMap(() => {
+            const newMap = filesMap.set(file.name, fileObj);
+            return newMap;
+          });
+        }
+        refreshPage();
+        // updateFileElement(fileObj);
+      };
+    
+      const onAbort = (_: ProgressEvent<EventTarget>, file: File): void => {
+        const fileObj = filesMap.get(file.name);
+        if (fileObj) {
+          fileObj.fileStatus.status = FILE_STATUS.PAUSED;
+      
+          setFilesMap(() => {
+            const newMap = filesMap.set(file.name, fileObj);
+            return newMap;
+          });
+        }
+        refreshPage();
+        // updateFileElement(fileObj);
+      };
+    
+      const handleUpload = uploadFiles(files, {
+        url: ENDPOINTS.UPLOAD,
+        startingByte: 0,
+        fileId: "",
+        onComplete: onComplete,
+        onError: onError,
+        onProgress: onProgress,
+        onAbort: onAbort,
+      });
+      
+      const retryFileUpload = handleUpload.retryFileUpload;
+      const abortFileUpload = handleUpload.abortFileUpload;
+      const resumeFileUpload = handleUpload.resumeFileUpload;
+      const clearFileUpload = async (file: File) => {
+        const cleared = await handleUpload.clearFileUpload(file);
+
+        const newMap = filesMap;
+        const deleted = newMap.delete(file.name);
+        if (deleted) {
+          setFilesMap(newMap);
+        }
+        refreshPage();
+        
+        if (cleared) {
+          return true
+        }
+        return false
+      }
+
       setFilesMap(() => {
-        const newMap = filesMap.set(file.name, {...defaultFileStatus, size: file.size});
+        const newMap = filesMap.set(file.name, {
+          file: file,
+          fileStatus: {
+            ...defaultFileStatus, size: file.size
+          },
+          uploader: {
+            retryFileUpload: retryFileUpload,
+            abortFileUpload: abortFileUpload,
+            resumeFileUpload: resumeFileUpload,
+            clearFileUpload: clearFileUpload,
+          }
+        });
         return newMap;
       });
     });
     console.log("FileMaps: ", filesMap);
   }, [files]);
 
-  const [maxButtonFocused, setMaxButtonFocused] = useState(false);
-  const [uploadPercentage, setUploadPercentage] = useState(0);
-  const [successCount, setSuccessCount] = useState(0);
-  const [failedCount, setFailedCount] = useState(0);
-  const [pausedCount, setPausedCount] = useState(0);
-
-  const onComplete = (_: ProgressEvent<EventTarget>, file: File): void => {
-    const fileObj = filesMap.get(file.name);
-    if (fileObj) {
-      fileObj.status = FILE_STATUS.COMPLETED;
-      fileObj.percentage = 100;
-
-      setFilesMap(() => {
-        const newMap = filesMap.set(file.name, fileObj);
-        return newMap;
-      });
-    }
-    // updateFileElement(fileObj);
-  };
-
-  const onProgress = (e: CustomProgressEvent, file: File): void => {
-    const fileObj = filesMap.get(file.name);
-    if (fileObj) {
-      fileObj.status = FILE_STATUS.UPLOADING;
-
-      if (e.percentage) {
-        fileObj.percentage = e.percentage;
-      }
-      fileObj.uploadedChunkSize = e.loaded;
-
-      setFilesMap(() => {
-        const newMap = filesMap.set(file.name, fileObj);
-        return newMap;
-      });
-    }
-    // updateFileElement(fileObj);
-  };
-
-  const onError = (_: ProgressEvent<EventTarget>, file: File): void => {
-    const fileObj = filesMap.get(file.name);
-
-    if (fileObj) {
-      fileObj.status = FILE_STATUS.FAILED;
-      fileObj.percentage = 100;
-  
-      setFilesMap(() => {
-        const newMap = filesMap.set(file.name, fileObj);
-        return newMap;
-      });
-    }
-    // updateFileElement(fileObj);
-  };
-
-  const onAbort = (_: ProgressEvent<EventTarget>, file: File): void => {
-    const fileObj = filesMap.get(file.name);
-    if (fileObj) {
-      fileObj.status = FILE_STATUS.PAUSED;
-  
-      setFilesMap(() => {
-        const newMap = filesMap.set(file.name, fileObj);
-        return newMap;
-      });
-    }
-
-    // updateFileElement(fileObj);
-  };
-
-  const handleUpload = uploadFiles(files, {
-    url: ENDPOINTS.UPLOAD,
-    startingByte: 0,
-    fileId: "",
-    onComplete: onComplete,
-    onError: onError,
-    onProgress: onProgress,
-    onAbort: onAbort,
-  });
-  
-  const retryFileUpload = handleUpload.retryFileUpload;
-  const abortFileUpload = handleUpload.abortFileUpload;
-  const resumeFileUpload = handleUpload.resumeFileUpload;
-  const clearFileUpload = handleUpload.clearFileUpload;
-
   return (
     <ProgressBox>
-      <UploadHeader>Uploading {files.length} Files</UploadHeader>
+      <UploadHeader>Uploading {`${pendingCount + uploadingCount}/${filesCount}`} Files</UploadHeader>
       <UploadProgressPara>
-        <UploadProgressSpan>{uploadPercentage}%</UploadProgressSpan>
+        <UploadProgressSpan>{uploadedSize/totalSize || 0}%</UploadProgressSpan>
         <UploadProgressSpan>{successCount}</UploadProgressSpan>
         <UploadProgressSpan>{failedCount}</UploadProgressSpan>
         <UploadProgressSpan>{pausedCount}</UploadProgressSpan>
@@ -188,16 +255,10 @@ const ProgressTracker = ({ files }: ProgressTrackerProps) => {
         }>
         Maximized
       </MaximizeButton>
-      <ProgressBar css={{ width: `${uploadPercentage}%` }}></ProgressBar>
-      {filesMap && files.map((file) => (
-        <div key={file.name}>
+      {[...filesMap.values()].map((file) => (
+        <div key={file.file.name}>          
           <UploadSession
-            file={file}
-            fileStatus={filesMap.get(file.name) || defaultFileStatus}
-            retryFileUpload={retryFileUpload}
-            abortFileUpload={abortFileUpload}
-            resumeFileUpload={resumeFileUpload}
-            clearFileUpload={clearFileUpload}
+            fileContent={file}
           />
         </div>
       ))}
@@ -205,26 +266,13 @@ const ProgressTracker = ({ files }: ProgressTrackerProps) => {
   );
 };
 
-interface UploadSessionProps {
-  file: File;
-  fileStatus: FileStatus;
-  retryFileUpload: (file: File) => void;
-  abortFileUpload: (file: File) => void;
-  resumeFileUpload: (file: File) => void;
-  clearFileUpload: (file: File) => void;
-}
+
 
 const UploadSession = ({
-  file,
-  fileStatus,
-  retryFileUpload,
-  abortFileUpload,
-  resumeFileUpload,
-  clearFileUpload,
+  fileContent
 }: UploadSessionProps) => {
-  const extIndex = file.name.lastIndexOf(".");
-  const uploadedPercentage: string = fileStatus?.percentage.toString() + "%" || "0%";
-  console.log("Individual file status", fileStatus, uploadedPercentage);
+  const extIndex = fileContent.file.name.lastIndexOf(".");
+  const uploadedPercentage: string = fileContent.fileStatus.percentage.toString() + "%" || "0%";
 
   return (
     <FileProgress>
@@ -232,36 +280,40 @@ const UploadSession = ({
         <FileDetailsPara>
           <FileDetailsSpan type="status">pending</FileDetailsSpan>
           <FileDetailsSpan type="fileName">
-            {file.name.substring(0, extIndex)}
+            {fileContent.file.name.substring(0, extIndex)}
           </FileDetailsSpan>
           <FileDetailsSpan type="fileExt">
-            {file.name.substring(extIndex)}
+            {fileContent.file.name.substring(extIndex)}
           </FileDetailsSpan>
         </FileDetailsPara>
-        <ProgressBar type="individual" css={{ width: "100%" }}></ProgressBar>
+        <div>{fileContent.fileStatus.size}</div>
+        <div>{fileContent.fileStatus.percentage}</div>
+        <div>{fileContent.fileStatus.status}</div>
+        <div>{fileContent.fileStatus.uploadedChunkSize}</div>
+        <ProgressBar type="individual" css={{ width: uploadedPercentage }}></ProgressBar>
       </FileDetails>
       <FileActions>
         <ActionButton
           onClick={() => {
-            retryFileUpload(file);
+            fileContent.uploader.retryFileUpload(fileContent.file);
           }}>
           Retry
         </ActionButton>
         <ActionButton
           onClick={() => {
-            abortFileUpload(file);
+            fileContent.uploader.abortFileUpload(fileContent.file);
           }}>
           Pause
         </ActionButton>
         <ActionButton
           onClick={() => {
-            resumeFileUpload(file);
+            fileContent.uploader.resumeFileUpload(fileContent.file);
           }}>
           Resume
         </ActionButton>
         <ActionButton
           onClick={() => {
-            clearFileUpload(file);
+            fileContent.uploader.clearFileUpload(fileContent.file);
           }}>
           Clear
         </ActionButton>

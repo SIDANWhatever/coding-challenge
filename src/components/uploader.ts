@@ -1,26 +1,4 @@
-import { styled } from "@src/stitches.config";
-
-export interface CustomProgressEvent extends ProgressEvent<EventTarget> {
-  percentage: number;
-}
-
-type onCompleteType = (arg0: ProgressEvent<EventTarget>, arg1: File) => any;
-type onErrorType = (arg0: ProgressEvent<EventTarget>, arg1: File) => any;
-type onProgressType = (
-  arg0: CustomProgressEvent,
-  arg1: File
-) => any;
-type onAbortType = (arg0: ProgressEvent<EventTarget>, arg1: File) => any;
-
-interface OptionsInterface {
-  startingByte: number;
-  fileId: string;
-  url: string | URL;
-  onComplete: onCompleteType;
-  onError: onErrorType;
-  onProgress: onProgressType;
-  onAbort: onAbortType;
-}
+import { CustomProgressEvent, OptionsInterface } from "./type";
 
 export const ENDPOINTS = {
   UPLOAD: "http://localhost:1234/upload",
@@ -35,7 +13,7 @@ export const uploadFiles = (() => {
     startingByte: 0,
     fileId: "",
     onAbort(e: ProgressEvent<EventTarget>, file: File) {},
-    onProgress(e: ProgressEvent<EventTarget>, file: File) {},
+    onProgress(e: CustomProgressEvent, file: File) {},
     onError(e: ProgressEvent<EventTarget>, file: File) {},
     onComplete(e: ProgressEvent<EventTarget>, file: File) {},
   };
